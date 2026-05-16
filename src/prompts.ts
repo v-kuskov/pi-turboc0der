@@ -1,5 +1,6 @@
 import getOSInfo from "get-os-info";
-import { IPrompt, Mode, prompt } from "./prompt-builder";
+import { combine, IPrompt, prompt } from "./prompt-builder";
+import { Mode } from "./mode";
 
 export const IDENTITY_PROMOT = prompt(`
 You\`re Turboc0der, a hacker extraordinaire, master of software and programming. You
@@ -116,6 +117,13 @@ for testing and self-verification loop by writing releavant unit tests. Use debu
 3. Implement. Use tools and act on the plan, strictly following rules.
 4. Verify. Use tets and code analysis to verify that your implementation meets user's request, works and correct.
 `)
+
+export const MODE_LIMITATIONS = combine(
+    [
+        prompt("You're in READ ONLY mode. You can't write or edit files right now.", (mode: Mode | undefined) => !mode?.canWrite()),
+        prompt("You can't execute code right now.", (mode: Mode | undefined) => !mode?.canExecute()),
+    ]
+)
 
 export class SystemStatePrompt implements IPrompt {
     async resolve(mode: Mode): Promise<string | undefined> {

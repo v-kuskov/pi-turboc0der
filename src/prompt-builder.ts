@@ -1,9 +1,4 @@
-export interface Mode {
-    name(): string;
-    canRead(): boolean;
-    canWrite(): boolean;
-    canExecute(): boolean;
-}
+import { Mode } from "./mode"; export { Mode };
 
 export interface IPrompt {
     resolve(mode: Mode | undefined): Promise<string | undefined>;
