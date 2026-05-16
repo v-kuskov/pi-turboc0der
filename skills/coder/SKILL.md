@@ -1,7 +1,6 @@
 ---
 name: coder
-description: Coding and system design guidance. Use every time you need to write, change, refactor or review code; to design API, system or
-to review exiting desing and system. Use when user asks about software design, programming, code, writing code, what good or bad code is.
+description: Coding and system design guidance. Use every time you need to write, change, refactor or review code, to design API, system or to review exiting desing and system. Use when user asks about software design, programming, code, writing code, what good or bad code is.
 ---
 
 This skill help you to write good code and design goodm systems.
