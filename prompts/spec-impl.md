@@ -14,7 +14,7 @@ and test patterns relevant to the plan.
 
 ## Rules
 
-- One task at a time.
+- One task at the time.
 - Review-gate per task, do NOT proceed until current task passes review.
 - Commit per task, each verified + reviewed task gets one intermediate commit.
 - Full test suite at end, run it before merging.
