@@ -4,29 +4,41 @@ import {
   DefaultResourceLoader,
   getAgentDir,
 } from '@earendil-works/pi-coding-agent';
+import { discoverAgent } from './discover-agent';
+import { BUILDIN_AGENTS } from './buildin-agents';
+import {
+  CAVEMAN_PROMPT,
+  SECURITY_PROMPT,
+  TOOLS_PROMPT,
+  systemStatePrompt,
+} from './prompts';
 
 /**
- * Run pi instance with file contents as system prompt and prompt text as user message.
+ * Run pi instance with given prompts as system prompt.
  *
  * Creates minimal pi session — no extensions, no prompt templates, no themes.
  * `@` references in prompt text are expanded via pi's built-in template expansion.
  *
- * @param filePath — Path to file whose contents become the agent's system prompt.
- * @param promptText — User message sent to the agent.
+ * @param prompts — Array of prompt strings joined with \n\n to form system prompt.
  * @param allowedTools — Optional tool allowlist. Default (undefined) = all tools.
  *                       Pass empty array for no tools.
  * @returns Assistant's full text response.
  */
 export async function runWithPrompt(
-  filePath: string,
-  promptText: string,
+  prompts: string[],
   allowedTools?: string[]
 ): Promise<string> {
   const cwd = process.cwd();
   const agentDir = getAgentDir();
 
-  // 1. Read file — becomes system prompt
-  const systemPromptContent = await fs.readFile(filePath, 'utf-8');
+  // 1. Build full prompt stack: essential prompts → user prompts → system state
+  const systemPromptContent = [
+    CAVEMAN_PROMPT,
+    SECURITY_PROMPT,
+    TOOLS_PROMPT,
+    ...prompts,
+    await systemStatePrompt(),
+  ].join('\n\n');
 
   // 2. Minimal resource loader: no extensions, no prompt templates, no themes
   const resourceLoader = new DefaultResourceLoader({
@@ -67,7 +79,7 @@ export async function runWithPrompt(
       });
 
       session
-        .prompt(promptText, { expandPromptTemplates: true })
+        .prompt('', { expandPromptTemplates: true })
         .catch((err: unknown) => {
           unsub();
           reject(err);
@@ -76,4 +88,32 @@ export async function runWithPrompt(
   } finally {
     session.dispose();
   }
+}
+
+/**
+ * Resolve agent prompts by name.
+ *
+ * Priority:
+ * 1. discoverAgent(name) — filesystem lookup (global ~/.pi/agents/, then local .pi/agents/)
+ * 2. BUILDIN_AGENTS[name] — built-in table
+ *
+ * @param name — Agent name (without .md extension).
+ * @returns Array of prompt strings ready for runWithPrompt.
+ * @throws If no agent found by name.
+ */
+export async function loadAgent(name: string): Promise<string[]> {
+  // Priority 1: filesystem
+  const agentPath = discoverAgent(name);
+  if (agentPath !== undefined) {
+    const content = await fs.readFile(agentPath, 'utf-8');
+    return [content];
+  }
+
+  // Priority 2: built-in table
+  const builtin = BUILDIN_AGENTS[name];
+  if (builtin !== undefined) {
+    return builtin;
+  }
+
+  throw new Error(`Agent not found: ${name}`);
 }

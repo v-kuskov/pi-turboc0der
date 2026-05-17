@@ -10,12 +10,24 @@ jest.mock('fs', () => {
   return { ...actual, promises: { readFile: jest.fn() } };
 });
 
-import { runWithPrompt } from '../src/runner';
+// Mock prompts to avoid get-os-info dynamic import in test env
+jest.mock('../src/prompts', () => ({
+  CAVEMAN_PROMPT: '# Response style',
+  SECURITY_PROMPT: '# Security **MANDATORY RULES**',
+  TOOLS_PROMPT: '# Tool usage',
+  systemStatePrompt: jest
+    .fn()
+    .mockResolvedValue('OS: Windows 10\nCWD: /test'),
+}));
+
+import { runWithPrompt, loadAgent } from '../src/runner';
+import { discoverAgent } from '../src/discover-agent';
+import { BUILDIN_AGENTS } from '../src/buildin-agents';
+
+jest.mock('../src/discover-agent');
 
 // ─── Test data ──────────────────────────────────────────────────
-const FILE_PATH = '/some/agent-rules.md';
-const PROMPT_TEXT = 'execute task';
-const SYSTEM_PROMPT_CONTENT = '# Agent Rules\nDo the thing.';
+const PROMPTS = ['# Agent Rules\nDo the thing.'];
 const ASSISTANT_RESPONSE = 'Task completed.';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -41,20 +53,31 @@ beforeEach(() => {
 });
 
 describe('runWithPrompt', () => {
-  test('reads file, creates session, sends prompt, returns assistant text', async () => {
+  test('prepends essential prompts, appends system state, returns assistant text', async () => {
     const mockSession = createMockSession(ASSISTANT_RESPONSE);
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
 
-    const result = await runWithPrompt(FILE_PATH, PROMPT_TEXT);
+    const result = await runWithPrompt(PROMPTS);
 
     expect(result).toBe(ASSISTANT_RESPONSE);
-    expect(fs.readFile).toHaveBeenCalledWith(FILE_PATH, 'utf-8');
     expect(getAgentDir).toHaveBeenCalledTimes(1);
+    // Check that the joined system prompt starts with essential prompts and contains user prompt
+    const systemPromptArg = (DefaultResourceLoader as jest.Mock).mock
+      .calls[0][0].systemPrompt;
+    expect(systemPromptArg).toContain('# Response style');
+    expect(systemPromptArg).toContain('# Security **MANDATORY RULES**');
+    expect(systemPromptArg).toContain('# Tool usage');
+    expect(systemPromptArg).toContain('# Agent Rules\nDo the thing.');
+    expect(systemPromptArg).toContain('OS: Windows 10');
+    // Essential prompts come before user prompts, system state at end
+    const essentialIdx = systemPromptArg.indexOf('# Response style');
+    const userIdx = systemPromptArg.indexOf('# Agent Rules');
+    const stateIdx = systemPromptArg.indexOf('OS: Windows 10');
+    expect(essentialIdx).toBeLessThan(userIdx);
+    expect(userIdx).toBeLessThan(stateIdx);
     expect(DefaultResourceLoader).toHaveBeenCalledWith(
       expect.objectContaining({
-        systemPrompt: SYSTEM_PROMPT_CONTENT,
         noExtensions: true,
         noPromptTemplates: true,
         noThemes: true,
@@ -67,49 +90,60 @@ describe('runWithPrompt', () => {
         tools: undefined,
       })
     );
-    expect(mockSession.prompt).toHaveBeenCalledWith(PROMPT_TEXT, {
+    expect(mockSession.prompt).toHaveBeenCalledWith('', {
       expandPromptTemplates: true,
     });
   });
 
-  test('propagates file read error', async () => {
-    const fileError = new Error('ENOENT: no such file');
-    (fs.readFile as jest.Mock).mockRejectedValue(fileError);
+  test('joins multiple prompts between essential prompts and system state', async () => {
+    const mockSession = createMockSession(ASSISTANT_RESPONSE);
+    (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
+    (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
+    const multiPrompts = ['# Part 1', '# Part 2'];
 
-    await expect(runWithPrompt(FILE_PATH, PROMPT_TEXT)).rejects.toThrow(fileError);
+    await runWithPrompt(multiPrompts);
+
+    const systemPromptArg = (DefaultResourceLoader as jest.Mock).mock
+      .calls[0][0].systemPrompt;
+    // User prompts between essentials and system state
+    const part1Idx = systemPromptArg.indexOf('# Part 1');
+    const part2Idx = systemPromptArg.indexOf('# Part 2');
+    const stateIdx = systemPromptArg.indexOf('OS: Windows 10');
+    expect(part1Idx).toBeLessThan(part2Idx);
+    expect(part2Idx).toBeLessThan(stateIdx);
+    // Essential prompts come before user prompts
+    const securityIdx = systemPromptArg.indexOf('# Security');
+    expect(securityIdx).toBeLessThan(part1Idx);
   });
 
   test('throws when agent returns no text', async () => {
     const mockSession = createMockSession(undefined);
     mockSession.agent.state.errorMessage = 'Model did not respond';
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
 
-    await expect(runWithPrompt(FILE_PATH, PROMPT_TEXT)).rejects.toThrow(
+    await expect(runWithPrompt(PROMPTS)).rejects.toThrow(
       'Model did not respond'
     );
   });
 
   test('throws "No assistant response" when both text and errorMessage are absent', async () => {
     const mockSession = createMockSession(undefined);
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
 
-    await expect(runWithPrompt(FILE_PATH, PROMPT_TEXT)).rejects.toThrow(
+    await expect(runWithPrompt(PROMPTS)).rejects.toThrow(
       'No assistant response'
     );
   });
 
   test('passes allowedTools to createAgentSession', async () => {
     const mockSession = createMockSession(ASSISTANT_RESPONSE);
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
     const allowed = ['read', 'bash'];
 
-    await runWithPrompt(FILE_PATH, PROMPT_TEXT, allowed);
+    await runWithPrompt(PROMPTS, allowed);
 
     expect(createAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({ tools: ['read', 'bash'] })
@@ -118,34 +152,58 @@ describe('runWithPrompt', () => {
 
   test('calls session.dispose after completion', async () => {
     const mockSession = createMockSession(ASSISTANT_RESPONSE);
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
 
-    await runWithPrompt(FILE_PATH, PROMPT_TEXT);
+    await runWithPrompt(PROMPTS);
 
     expect(mockSession.dispose).toHaveBeenCalledTimes(1);
   });
 
   test('calls session.dispose even when agent returns no text', async () => {
     const mockSession = createMockSession(undefined);
-    (fs.readFile as jest.Mock).mockResolvedValue(SYSTEM_PROMPT_CONTENT);
     (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
     (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
 
-    await expect(runWithPrompt(FILE_PATH, PROMPT_TEXT)).rejects.toThrow();
+    await expect(runWithPrompt(PROMPTS)).rejects.toThrow();
 
     expect(mockSession.dispose).toHaveBeenCalledTimes(1);
   });
+});
 
-  test('does not call dispose when file read fails (no session created)', async () => {
-    const mockSession = createMockSession(ASSISTANT_RESPONSE);
-    (fs.readFile as jest.Mock).mockRejectedValue(new Error('read error'));
-    (getAgentDir as jest.Mock).mockReturnValue('/fake/agent/dir');
-    (createAgentSession as jest.Mock).mockResolvedValue({ session: mockSession });
+describe('loadAgent', () => {
+  const AGENT_NAME = 'test-agent';
+  const AGENT_CONTENT = '# Test Agent\nDo the thing.';
 
-    await expect(runWithPrompt(FILE_PATH, PROMPT_TEXT)).rejects.toThrow('read error');
+  test('discovers agent via discoverAgent, reads file, returns prompts', async () => {
+    (discoverAgent as jest.Mock).mockReturnValue('/path/to/test-agent.md');
+    (fs.readFile as jest.Mock).mockResolvedValue(AGENT_CONTENT);
 
-    expect(mockSession.dispose).not.toHaveBeenCalled();
+    const result = await loadAgent(AGENT_NAME);
+
+    expect(result).toEqual([AGENT_CONTENT]);
+    expect(discoverAgent).toHaveBeenCalledWith(AGENT_NAME);
+    expect(fs.readFile).toHaveBeenCalledWith('/path/to/test-agent.md', 'utf-8');
+  });
+
+  test('falls back to BUILDIN_AGENTS when discoverAgent returns undefined', async () => {
+    (discoverAgent as jest.Mock).mockReturnValue(undefined);
+    BUILDIN_AGENTS[AGENT_NAME] = [AGENT_CONTENT];
+
+    const result = await loadAgent(AGENT_NAME);
+
+    expect(result).toEqual([AGENT_CONTENT]);
+    expect(discoverAgent).toHaveBeenCalledWith(AGENT_NAME);
+    expect(fs.readFile).not.toHaveBeenCalled();
+
+    delete BUILDIN_AGENTS[AGENT_NAME];
+  });
+
+  test('throws when agent not found anywhere', async () => {
+    (discoverAgent as jest.Mock).mockReturnValue(undefined);
+
+    await expect(loadAgent('nonexistent-agent')).rejects.toThrow(
+      'Agent not found: nonexistent-agent'
+    );
   });
 });

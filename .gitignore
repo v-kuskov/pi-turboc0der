@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 .pi-lens/
 .specs/
 .docs/
+__mocks__/
