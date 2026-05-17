@@ -22,10 +22,12 @@ describe('fd tool', () => {
     expect(props.extension).toBeDefined();
     expect(props.hidden).toBeDefined();
     expect(props.maxDepth).toBeDefined();
+    expect(props.limit).toBeDefined();
+    expect((props.limit as any).default).toBe(20);
   });
 
   test('execute finds files by glob', async () => {
-    const result = await fdToolDef.execute('c1', { pattern: '*.md' }, undefined);
+    const result = await fdToolDef.execute('c1', { pattern: '*.md', limit: 50 }, undefined);
     expect(result.content[0].text).toContain('AGENTS.md');
   });
 
@@ -34,11 +36,16 @@ describe('fd tool', () => {
     expect(result.content[0].text).toBe('fd "ZZZZ_NONEXISTENT_99999"');
   });
 
+  test('execute respects limit param', async () => {
+    const result = await fdToolDef.execute('c3', { pattern: '*.ts', limit: 1 }, undefined);
+    expect(result.content[0].text).toContain('[Limit: 1 results]');
+  });
+
   test('execute filters by extension', async () => {
     const result = await fdToolDef.execute('c4', { pattern: '*', extension: 'md' }, undefined);
     const lines = result.content[0].text.trim().split('\n').filter((l: string) => l);
     for (const line of lines) {
-      if (line.startsWith('fd "')) continue;
+      if (line.startsWith('fd "') || line.startsWith('[Limit:')) continue;
       expect(line.endsWith('.md')).toBeTruthy();
     }
   });

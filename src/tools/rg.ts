@@ -9,6 +9,7 @@ const RgSchema = Type.Object({
   glob: Type.Optional(Type.String({ description: 'File glob filter, e.g. *.ts' })),
   context: Type.Optional(Type.Number({ description: 'Context lines before/after match (-C)', default: 0 })),
   fixed: Type.Optional(Type.Boolean({ description: 'Literal search, not regex (-F)', default: false })),
+  limit: Type.Optional(Type.Number({ description: 'Max results (default: 20)', default: 20 })),
 });
 
 export type RgInput = {
@@ -18,6 +19,7 @@ export type RgInput = {
   glob?: string;
   context?: number;
   fixed?: boolean;
+  limit?: number;
 };
 
 function buildArgs(params: RgInput): string[] {
@@ -26,6 +28,8 @@ function buildArgs(params: RgInput): string[] {
   if (params.glob) args.push('--glob', params.glob);
   if (params.context && params.context > 0) args.push('-C', String(params.context));
   if (params.fixed) args.push('--fixed-strings');
+  const limit = params.limit ?? 20;
+  if (limit > 0) args.push('--max-count', String(limit));
   args.push('--', params.pattern);
   return args;
 }
@@ -52,6 +56,7 @@ export const rgToolDef = {
         return;
       }
 
+      const limit = params.limit ?? 20;
       const args = buildArgs(params);
       const searchPath = params.path || '.';
       args.push(searchPath);
@@ -94,6 +99,12 @@ export const rgToolDef = {
         }
 
         const result = [header, ...lines].join('\n');
+
+        if (lines.length >= limit) {
+          settle(() => resolve({ content: [{ type: 'text', text: result + '\n[Limit: ' + limit + ' results]' }], details: undefined }));
+          return;
+        }
+
         settle(() => resolve({ content: [{ type: 'text', text: result }], details: undefined }));
       });
     });

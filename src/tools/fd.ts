@@ -9,6 +9,7 @@ const FdSchema = Type.Object({
   extension: Type.Optional(Type.String({ description: 'Filter by extension, e.g. ts, md' })),
   hidden: Type.Optional(Type.Boolean({ description: 'Include hidden files/dirs', default: false })),
   maxDepth: Type.Optional(Type.Number({ description: 'Max dir depth' })),
+  limit: Type.Optional(Type.Number({ description: 'Max results (default: 20)', default: 20 })),
 });
 
 export type FdInput = {
@@ -18,6 +19,7 @@ export type FdInput = {
   extension?: string;
   hidden?: boolean;
   maxDepth?: number;
+  limit?: number;
 };
 
 function buildArgs(params: FdInput): string[] {
@@ -26,6 +28,8 @@ function buildArgs(params: FdInput): string[] {
   if (params.type) args.push('--type', params.type);
   if (params.extension) args.push('--extension', params.extension);
   if (params.maxDepth !== undefined) args.push('--max-depth', String(params.maxDepth));
+  const limit = params.limit ?? 20;
+  if (limit > 0) args.push('--max-results', String(limit));
   args.push('--', params.pattern);
   return args;
 }
@@ -52,6 +56,7 @@ export const fdToolDef = {
         return;
       }
 
+      const limit = params.limit ?? 20;
       const args = buildArgs(params);
       const searchPath = params.path || '.';
       args.push(searchPath);
@@ -93,6 +98,12 @@ export const fdToolDef = {
         }
 
         const result = [header, ...lines].join('\n');
+
+        if (lines.length >= limit) {
+          settle(() => resolve({ content: [{ type: 'text', text: result + '\n[Limit: ' + limit + ' results]' }], details: undefined }));
+          return;
+        }
+
         settle(() => resolve({ content: [{ type: 'text', text: result }], details: undefined }));
       });
     });

@@ -22,6 +22,8 @@ describe('rg tool', () => {
     expect(props.glob).toBeDefined();
     expect(props.context).toBeDefined();
     expect(props.fixed).toBeDefined();
+    expect(props.limit).toBeDefined();
+    expect((props.limit as any).default).toBe(20);
   });
 
   test('execute searches with rg and returns results', async () => {
@@ -34,6 +36,11 @@ describe('rg tool', () => {
   test('execute returns no hits', async () => {
     const result = await rgToolDef.execute('c2', { pattern: 'ZZZZ_NONEXISTENT_99999', path: 'package.json' }, undefined);
     expect(result.content[0].text).toBe('rg "ZZZZ_NONEXISTENT_99999"');
+  });
+
+  test('execute respects limit param', async () => {
+    const result = await rgToolDef.execute('c3', { pattern: 'TODO', limit: 1 }, undefined);
+    expect(result.content[0].text).toContain('[Limit: 1 results]');
   });
 
   test('execute respects ignore-case', async () => {
