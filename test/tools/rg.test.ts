@@ -18,7 +18,6 @@ describe('rg tool', () => {
     const props = rgToolDef.parameters.properties;
     expect(props.pattern).toBeDefined();
     expect(props.path).toBeDefined();
-    expect((props.limit as any).default).toBe(20);
     expect(props['ignore-case']).toBeDefined();
     expect(props.glob).toBeDefined();
     expect(props.context).toBeDefined();
@@ -32,19 +31,14 @@ describe('rg tool', () => {
     expect(result.content[0].text).toContain('rg.test.ts');
   });
 
-  test('execute returns NO MATCHES for no hits', async () => {
-    const result = await rgToolDef.execute('c2', { pattern: 'ZZZZ_NONEXISTENT', path: 'package.json' }, undefined);
-    expect(result.content[0].text).toBe('NO MATCHES:');
-  });
-
-  test('execute respects limit param', async () => {
-    const result = await rgToolDef.execute('c3', { pattern: 'TODO', limit: 1 }, undefined);
-    expect(result.content[0].text).toContain('[Limit: 1 results]');
+  test('execute returns no hits', async () => {
+    const result = await rgToolDef.execute('c2', { pattern: 'ZZZZ_NONEXISTENT_99999', path: 'package.json' }, undefined);
+    expect(result.content[0].text).toBe('rg "ZZZZ_NONEXISTENT_99999"');
   });
 
   test('execute respects ignore-case', async () => {
     const result = await rgToolDef.execute('c4', { pattern: 'todo', 'ignore-case': true }, undefined);
-    expect(result.content[0].text).not.toBe('NO MATCHES:');
+    expect(result.content[0].text.split('\n').length).toBeGreaterThan(1);
   });
 
   test('execute passes path param', async () => {

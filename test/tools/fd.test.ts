@@ -18,7 +18,6 @@ describe('fd tool', () => {
     const props = fdToolDef.parameters.properties;
     expect(props.pattern).toBeDefined();
     expect(props.path).toBeDefined();
-    expect((props.limit as any).default).toBe(20);
     expect(props.type).toBeDefined();
     expect(props.extension).toBeDefined();
     expect(props.hidden).toBeDefined();
@@ -30,22 +29,17 @@ describe('fd tool', () => {
     expect(result.content[0].text).toContain('AGENTS.md');
   });
 
-  test('execute returns NO MATCHES for no results', async () => {
+  test('execute returns no results', async () => {
     const result = await fdToolDef.execute('c2', { pattern: 'ZZZZ_NONEXISTENT_99999', path: 'package.json' }, undefined);
-    expect(result.content[0].text).toBe('NO MATCHES:');
-  });
-
-  test('execute respects limit param', async () => {
-    const result = await fdToolDef.execute('c3', { pattern: '*.ts', limit: 1 }, undefined);
-    expect(result.content[0].text).toContain('[Limit: 1 results]');
+    expect(result.content[0].text).toBe('fd "ZZZZ_NONEXISTENT_99999"');
   });
 
   test('execute filters by extension', async () => {
     const result = await fdToolDef.execute('c4', { pattern: '*', extension: 'md' }, undefined);
     const lines = result.content[0].text.trim().split('\n').filter((l: string) => l);
     for (const line of lines) {
-      if (line.startsWith('[')) continue;
-      expect(line.endsWith('.md') || line.includes('Limit')).toBeTruthy();
+      if (line.startsWith('fd "')) continue;
+      expect(line.endsWith('.md')).toBeTruthy();
     }
   });
 

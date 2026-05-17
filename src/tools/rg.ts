@@ -2,15 +2,9 @@ import { Type } from 'typebox';
 import { spawn } from 'child_process';
 import { createInterface } from 'readline';
 
-/**
- * rg tool — search file contents using ripgrep.
- * Minimal, agent-friendly wrapper around `rg` binary.
- */
-
 const RgSchema = Type.Object({
   pattern: Type.String({ description: 'Search pattern (regex by default)' }),
-  path: Type.Optional(Type.String({ description: 'Directory or file to search (default: CWD)' })),
-  limit: Type.Optional(Type.Number({ description: 'Max results (default: 20)', default: 20 })),
+  path: Type.Optional(Type.String({ description: 'Dir or file to search (default: CWD)' })),
   'ignore-case': Type.Optional(Type.Boolean({ description: 'Case-insensitive search (-i)', default: false })),
   glob: Type.Optional(Type.String({ description: 'File glob filter, e.g. *.ts' })),
   context: Type.Optional(Type.Number({ description: 'Context lines before/after match (-C)', default: 0 })),
@@ -20,7 +14,6 @@ const RgSchema = Type.Object({
 export type RgInput = {
   pattern: string;
   path?: string;
-  limit?: number;
   'ignore-case'?: boolean;
   glob?: string;
   context?: number;
@@ -33,8 +26,6 @@ function buildArgs(params: RgInput): string[] {
   if (params.glob) args.push('--glob', params.glob);
   if (params.context && params.context > 0) args.push('-C', String(params.context));
   if (params.fixed) args.push('--fixed-strings');
-  const limit = params.limit ?? 20;
-  if (limit > 0) args.push('--max-count', String(limit));
   args.push('--', params.pattern);
   return args;
 }
@@ -42,8 +33,8 @@ function buildArgs(params: RgInput): string[] {
 export const rgToolDef = {
   name: 'rg',
   label: 'rg',
-  description: 'Search file contents for a pattern using ripgrep. Returns matching lines with file:line:content. Respects .gitignore.',
-  promptSnippet: 'Search file contents with ripgrep (respects .gitignore)',
+  description: 'Search file contents by pattern → [printed/total].',
+  promptSnippet: 'search file contents by pattern',
   parameters: RgSchema,
   execute: async (
     _toolCallId: string,
@@ -65,23 +56,22 @@ export const rgToolDef = {
       const searchPath = params.path || '.';
       args.push(searchPath);
 
-      const rg = spawn('rg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      const rl = createInterface({ input: rg.stdout });
+      const proc = spawn('rg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      const rl = createInterface({ input: proc.stdout });
       const lines: string[] = [];
       let stderr = '';
 
-      rg.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-
+      proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
       rl.on('line', (line: string) => { lines.push(line); });
 
       const cleanup = () => { rl.close(); };
 
-      rg.on('error', (err: Error) => {
+      proc.on('error', (err: Error) => {
         cleanup();
         settle(() => reject(new Error(`rg binary not available: ${err.message}`)));
       });
 
-      rg.on('close', (code: number | null) => {
+      proc.on('close', (code: number | null) => {
         cleanup();
         if (settled) return;
         if (signal?.aborted) {
@@ -89,23 +79,21 @@ export const rgToolDef = {
           return;
         }
 
-        // rg exit code: 0 = hits, 1 = no hits, >1 = error
+        // rg exit: 0 = hits, 1 = no hits, >1 = error
         if (code !== null && code > 1) {
           const msg = stderr.trim() || `rg exited with code ${code}`;
           settle(() => resolve({ content: [{ type: 'text', text: `ERROR: ${msg}` }], details: undefined }));
           return;
         }
 
+        const header = `rg "${params.pattern}"`;
+
         if (lines.length === 0) {
-          settle(() => resolve({ content: [{ type: 'text', text: 'NO MATCHES:' }], details: undefined }));
+          settle(() => resolve({ content: [{ type: 'text', text: header }], details: undefined }));
           return;
         }
 
-        const limit = params.limit ?? 20;
-        const output = lines.join('\n');
-        const result = lines.length >= limit
-          ? `${output}\n[Limit: ${limit} results]`
-          : output;
+        const result = [header, ...lines].join('\n');
         settle(() => resolve({ content: [{ type: 'text', text: result }], details: undefined }));
       });
     });

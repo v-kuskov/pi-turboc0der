@@ -1,5 +1,5 @@
 import { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { TOOLS_PROMPT, SECURITY_PROMPT, IDENTITY_PROMPT, CAVEMAN_PROMPT, WORKFLOW_PROMPT, DESIGN_PROMPT, CODING_PROMPT, systemStatePrompt } from "./prompts";
+import { TOOLS_PROMPT, SECURITY_PROMPT, IDENTITY_PROMPT, CAVEMAN_PROMPT, WORKFLOW_PROMPT, DESIGN_PROMPT, CODING_PROMPT, systemStatePrompt, INTERNAL_TOOLS } from "./prompts";
 import { rgToolDef } from "./tools/rg";
 import { fdToolDef } from "./tools/fd";
 
