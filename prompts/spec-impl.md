@@ -33,22 +33,22 @@ git checkout -b "feat/{feature}"
 
 For each task, in execution order:
 
-### Implement Task
+### Implement
 
 Update the task's frontmatter `status` from `planned` to `in-progress`.
 Mark task as `in-progress` in task list.
 
-Launch subagent to use TDD, provide it with
+Launch subagent for task, provide it with:
 
 - Feature slug.
 - Path to the task file.
 - Paths to referenced spec files.
 - Necessary context.
-- Order to use `tdd` skill.
+- Must strictly follow TDD process, explicit RED->GREEN->REFACTOR phases, use `tdd` skill.
 
-Wait for agent to complete.
+Agent must implement exactly one task. Wait for agent to complete.
 
-### Review Task
+### Review
 
 Launch 2 reviews in parallel:
 
@@ -61,7 +61,8 @@ Pass to each agent:
 - List of changed files (from `git diff --name-only`)
 - Order to use `code-review-excellence` skill.
 
-Wait for review agents to complete, merge results.
+Review agents must review only changes that were made for current task
+with clear context. Wait for review agents to complete, merge results.
 Review output is trusted and should not be validated.
 
 ### Verify
