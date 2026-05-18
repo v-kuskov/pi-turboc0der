@@ -14,7 +14,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "0.74.1",
+    "@earendil-works/pi-coding-agent": "0.74.1"
   },
   "pi": {
     "skills": [
