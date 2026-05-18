@@ -1,26 +1,31 @@
 ---
 description: Implement planned spec
-argument-hint: [feature slug]
+argument-hint: [feature slug - name from .specs/{slug}]
 ---
 
 Orchestrate implementation for given feature using TDD, subagents and self-verification cycle.
 
 **Pre-flight**
 
-1. Read plan `.specs/{feature}/plan.md` — confirm `status: approved`.
-2. Explore the codebase enough to understand existing types, interfaces, module structure
+- [ ] Read plan `.specs/{feature}/plan.md` — confirm `status: approved`.
+- [ ] Explore the codebase enough to understand existing types, interfaces, module structure
 and test patterns relevant to the plan.
-3. Run verification and tests to confirm clean start.
+- [ ] Run verification and tests to confirm clean start.
 
-**Rules**
+<details>
+<summary><b>Rules</b></summary>
 
-- One task at the time.
+- One task at a time.
 - Review-gate per task, do NOT proceed until current task passes review.
 - Commit per task, each verified + reviewed task gets one intermediate commit.
 - Full test suite at end, run it before merging.
-- *Squash all per-task commits collapsed into one consolidated commit.
-- Consolidated commit message, describe what was done for the task, follow project's guidlines.
-- Never change code, that's what subagents for.
+- Squash all per-task commits into one consolidated commit.
+- Consolidated commit message describes what was done across all tasks, follow project's guidelines.
+- Never change code, that's what subagents are for.
+- Verification means running the project's build + test commands (language-specific). Provided by project context.
+- Full Verification at the end means running the complete test suite (build + lint + all tests). Same commands as per-task verification, but run against the full codebase.
+
+</details>
 
 **1. Create Feature Base Branch**
 
@@ -28,21 +33,23 @@ and test patterns relevant to the plan.
 git checkout -b "feat/{feature}"
 ```
 
-**2. Implement plan one task at time**
+**2. Implement plan one task at a time**
 
-For each task, in execution order update the task's frontmatter `status` from `planned` to `in-progress` and run `tdd` agent for that task.
+- [ ] For each task, in execution order: update the task's frontmatter `status` from `planned` to `in-progress`.
+- [ ] Run the `tdd` agent (`agents/tdd.md`) for that task.
 
 Provide agent with:
 
 - Full task description.
 - References to related files.
 - All necessary context.
+- Build/test commands (from project context).
 
 Agent must implement exactly one task. Wait for agent to complete.
 
 **3. Review**
 
-Launch 2 instances of `reviewer` agents in parallel:
+Launch 2 instances of the reviewer agent (`agents/reviewer.md`) in parallel:
 
 1. Check if code is correct and meets standards and best practices.
 2. Check if code does what it's supposed to do against the spec.
@@ -53,19 +60,28 @@ Pass to each agent:
 - Parts of the spec this task implemented.
 - List of changed files.
 
-Review output is trusted and should not be validated.
-
 **4. Verify**
 
 If review returned any blocking/critical/major issues or verification failed → go to fix loop.
 
-**Fix Loop**
+<details>
+<summary><b>Fix Loop</b></summary>
 
 When build or test output contains blocking, critical, or major failures:
 
 1. Collect the failure details.
-2. Go back to step 2, re-launch it, add failure details to the prompt.
-3. No more thn 3 fix iterations per task.
+2. **Spec error check** — if failure indicates spec is wrong (wrong behavior, missing cases, contradictory requirements): hard stop. Report error and abort. Do NOT fix spec.
+3. **Code error** — go back to step 2, re-launch it, add failure details to the prompt.
+4. No more than 3 fix iterations per task.
+5. If 3 iterations exhausted, mark task as `failed`, report in final output, and stop.
+
+**Unrecoverable failure** (build system broken, deps missing, infrastructure):
+
+- Reset last changes.
+- Leave already-implemented tasks intact.
+- Report what failed and what's salvageable.
+
+</details>
 
 **Mark Task Done**
 
@@ -75,7 +91,7 @@ Update the task `status` from `in-progress` to `done`.
 
 ```powershell
 git add <list of changed files>
-git commit -m "<short description what was done as full stntences>" -m "<list of changes, short explanation what was changed, and why>"
+git commit -m "<short description what was done as full sentences>" -m "<list of changes, short explanation what was changed, and why>"
 ```
 
 One commit per task. Follow project-specific commit rules.
@@ -90,8 +106,6 @@ After ALL tasks are committed run full verification and tests.
 If verification fails, fix it.
 
 **Report**
-
-Update project's context.
 
 Return:
 

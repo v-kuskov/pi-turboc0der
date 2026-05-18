@@ -1,6 +1,6 @@
 ---
 description: Commit changes to git
-argument-hint: <description what need to be commited>
+argument-hint: <description of what needs to be committed>
 ---
 
 Commit changes in git repository. Collect changes, formulate message, present it to user and commit after confirmation.
@@ -8,9 +8,9 @@ Commit changes in git repository. Collect changes, formulate message, present it
 **Collect files**
 
 - Check what was done in this session, what files were changed.
-- Check which files are stages and changed with `git status --porcelain`.
+- Check which files are staged and changed with `git status --porcelain`.
 - Read changes if needed by using `git diff`.
-- Stage files that has changes related to the goal `git add <file> <file>..`.
+- Stage files that have changes related to the goal `git add <file> <file>..`.
 - Do not review changes, accept them as-is.
 - Do not make any changes.
 
@@ -18,19 +18,19 @@ Commit changes in git repository. Collect changes, formulate message, present it
 
 - Changes are small <= 10 lines total or <=3 lines per file.
 - Changes don't affect functionality and fix minor bugs or typos
-- Changes are directly related to last commit `git log-1 --format=%s`.
+- Changes are directly related to last commit `git log -1 --format=%s`.
 
 **Formulate list of changes**
 
 - Each logical change goes into one line describe in one sentence.
-- For bugs add short explaination, including root reason and fix.
-- Keep list of changes short, group and merge agressively.
+- For bugs add short explanation, including root reason and fix.
+- Keep list of changes short, group and merge aggressively.
 
 Commit description examples:
 
 ```text
 - Added ILogging service.
-- Added implementations for ILogSing: ConsoleLogSink, FileLogSink
+- Added implementations for ILogging: ConsoleLogSink, FileLogSink
 ```
 
 ```text
@@ -59,10 +59,10 @@ Wait for user to confirm.
 
 **Commit**
 
-If user confirm then exceute:
+If user confirms then execute:
 
 - Commit: `git commit -m "One-line description" -m "Description"`
-- Check that commit was successfull: `git log -1`
+- Check that commit was successful: `git log -1`
 - Present user report and commit hash
 
 ```markdown

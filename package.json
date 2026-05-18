@@ -1,5 +1,5 @@
 {
-  "name": "pi-turboc0der",
+  "name": "turboc0der",
   "version": "0.1.0",
   "description": "Turboc0der",
   "main": "dist/index.js",
@@ -14,13 +14,9 @@
     "test": "jest"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "0.75.1",
-    "get-os-info": "^1.0.2"
+    "@earendil-works/pi-coding-agent": "0.74.1",
   },
   "pi": {
-    "extensions": [
-      "./src/index.ts"
-    ],
     "skills": [
       "./skills"
     ],

@@ -1,36 +1,43 @@
 ---
 description: Planning implementation for spec
-argument-hint: [feature slug]
+argument-hint: [feature slug - name from .specs/{slug}]
 ---
 
-Write implementation plan for created and approved spec.  Take the spec files, validate and sharpen through grilling, deduce what you can from codebase/spec, ask user about the rest. Decompose into a high-level plan with compilable+testable task boundaries.
+Write implementation plan for created and approved spec.  Take the spec files, validate and sharpen through grilling, deduce what you can from codebase/spec, ask user about the rest. Decompose into a high-level plan with compilable+testable task boundaries. Your only job is planning, do not write any code.
+
+**Rules**
+
+1. Plan and tasks files are ≤ 300 lines.
+2. Dependencies form a DAG without cycles
+3. Every task implements one finished aspect of the spec.
+4. Every task has full set of related tests.
 
 **Pre-flight**
 
-1. Read project's context, understand it's structure and high-level functionality.
-2. Read `.specs/{feature}/spec.md` and all `.specs/{feature}/spec-*.md` sub-specs.
-3. Explore the codebase enough to understand existing types, interfaces, module structure
-and test patterns relevant to the feature.
-4. From the spec and codebase try to resolve each design question yourself.
+- [ ] Read project's context (CONTEXT.md if exists), understand its structure and high-level functionality.
+- [ ] Read `.specs/{feature}/spec.md` and all `.specs/{feature}/spec-*.md` sub-specs.
+- [ ] Explore the codebase enough to understand existing types, interfaces, module structure and test patterns relevant to the feature.
+- [ ] From the spec and codebase try to resolve each design question yourself.
+- [ ] Verify the codebase compiles and tests pass before writing any plan files. If broken, report to user first.
 
 **1. Spec validation**
 
-- Terminology: does the spec use terms that conflict with CONTEXT.md definitions?
-- Boundaries: Are module responsibilities clear? Does the spec imply a dependency direction that conflicts with existing architecture?
-- Type shapes: Are the proposed types coherent with existing code patterns?
-- Missing assumptions: Does the spec assume capabilities the codebase doesn't have?
+- [ ] Terminology: does the spec use terms that conflict with CONTEXT.md definitions?
+- [ ] Boundaries: Are module responsibilities clear? Does the spec imply a dependency direction that conflicts with existing architecture?
+- [ ] Type shapes: Are the proposed types coherent with existing code patterns?
+- [ ] Missing assumptions: Does the spec assume capabilities the codebase doesn't have?
 
 **2. Design questions**
 
-- Knowledge barriers, what each piece of code must and must not know, keep it minimal.
-- Types, what types feature need, what data and states those types are representing, how connected with another types.
-- Interface shape, signatures that match existing patterns, choose simpler over complex.
-- Where code must be located, must follow axisting conventions.
-- Task decomposition, each task must end with something compilable and testable.
+- [ ] Knowledge barriers, what each piece of code must and must not know, keep it minimal.
+- [ ] Types, what types feature need, what data and states those types are representing, how connected with another types.
+- [ ] Interface shape, signatures that match existing patterns, choose simpler over complex.
+- [ ] Where code must be located, must follow existing conventions.
+- [ ] Task decomposition, each task must end with something compilable and testable.
 
-**3. Interrogat the user**
+**3. Interrogate the user**
 
-Systematically ask the user about desing decisions that you couldn't resolve. For questions answerable via codebase exploration, explore instead of asking.
+Systematically ask the user about design decisions that you couldn't resolve. For questions answerable via codebase exploration, explore instead of asking.
 
 Rules:
 
@@ -41,10 +48,33 @@ Rules:
 
 Question categories:
 
-1. API shape — "Should Pop return `bool` with out-param, or nullable?" — only if both patterns exist in codebase.
-2. Behavioral choices — "When X happens, should we Y or Z?" — only when spec is ambiguous.
-3. Config defaults — Any numeric/bool config that needs a default.
-4. Error/edge handling — Any non-obvious edge case not covered by spec.
+<details>
+<summary><b>API shape</b></summary>
+
+"Should <function> return `bool` with out-param, or nullable?" — only if both patterns exist in codebase.
+
+</details>
+
+<details>
+<summary><b>Behavioral choices</b></summary>
+
+"When X happens, should we Y or Z?" — only when spec is ambiguous.
+
+</details>
+
+<details>
+<summary><b>Config defaults</b></summary>
+
+Any numeric/bool config that needs a default.
+
+</details>
+
+<details>
+<summary><b>Error/edge handling</b></summary>
+
+Any non-obvious edge case not covered by spec.
+
+</details>
 
 Heuristics:
 
@@ -56,25 +86,36 @@ Heuristics:
 | What default? | Check if the codebase uses a similar default elsewhere. |
 | How to split tasks? | Find natural seams: data structure → its consumer → wiring. Each task = a vertical slice with its own tests. |
 
-**3. Document decisions**
+**4. Document decisions**
 
 For each decision, note it with brief rationale. These become part of the plan's Architecture section.
 
 Rules:
-
 - Do NOT ask about WHAT the feature does (spec-write already covered that). Ask only about HOW to build it.
 - Every question should offer a recommended answer. "I think X because Y. Does that work?"
-- Max 3 iterations.
+- Max 4 iterations total (shared with interrogation phase).
 
-**4. Plan & Decompose**
+**5. Plan & Decompose**
 
 Write `plan.md` and `task-{desc}.md` files into `.specs/{feature}/`.
 
-Plan structure:
+**5a. Validate dependency graph** — after writing all task files, run topological sort check to detect cycles:
+
+1. Collect all task filenames (kebab-case, no extension).
+2. For each task, read its `dependencies` frontmatter.
+3. Build adjacency list: each task points to its dependents.
+4. Run Kahn's algorithm (or DFS cycle detection):
+   - If cycle found → identify the cycle path, report which tasks form it.
+   - Break cycle by: reordering tasks, merging conflicted tasks, or splitting into smaller tasks.
+5. Re-validate until no cycles remain.
+6. Only then write files to `.specs/{feature}/`.
+
+<details>
+<summary><b>Plan structure template</b></summary>
 
 ```markdown
 ---
-status: draft
+status: planned
 summary: Execution plan for {feature}
 ---
 
@@ -100,7 +141,7 @@ Brief (2-3 sentences): what gets built, what changes.
 
 ### Types
 
-For each type (new or modified), describe it's name, what this type repesents, which states it covers.
+For each type (new or modified), describe its name, what this type represents, which states it covers.
 
 ### Interface
 
@@ -115,6 +156,14 @@ Describe global state, where and how it changes.
 
 - What each module knows and does NOT know.
 - "X knows Y but not Z."
+
+## Open Questions
+
+Any design questions not resolved during interrogation. Prefix with what needs to be decided and by whom.
+
+| # | Question | Impact |
+|---|----------|--------|
+| 1 | <unresolved question> | <what gets blocked without this> |
 
 ## Acceptance
 
@@ -149,12 +198,15 @@ Constraints on plan.md:
 - File Organization section lists every file touched by the plan.
 - Tasks section at the end lists all task files with a short summary and dependency column.
 
-Task file structure:
+</details>
+
+<details>
+<summary><b>Task file structure template</b></summary>
 
 ```markdown
 ---
 summary: One-line description of what this task accomplishes
-dependencies: []
+dependencies: [list of task that should be done before]
 ---
 
 # Description
@@ -190,38 +242,30 @@ Test scenarios: 1-2 sentence descriptions of key test cases (language-agnostic).
 
 ```
 
+</details>
+
 Constraints on task files:
 
 - ≤ 300 lines each.
 - Keep it short, favor concise descriptions over verbose detail.
 - Avoid code, only include pseudocode for genuinely non-obvious algorithms.
 - Must have `Acceptance` criteria section, with US/FC/EC coverage and test scenario descriptions.
-- Each task must end in a state that compiles and tests pass, reperesent vertical slice: soruce code + tests scoped for this task.
+- Each task must end in a state that compiles and tests pass, represent vertical slice: source code + tests scoped for this task.
 - The first task must have `dependencies: []` — it needs nothing else.
-- Follow `dependencies: [task-1, task-3]` format for frontmatter where applicable.
-- Dependencies must be acyclic. Tasks form a DAG.
+- Follow `dependencies: [task-types, task-validate]` format (kebab-case task filename without extension) for frontmatter where applicable.
+- Dependencies must be acyclic. Tasks form a DAG. Follow step 5a for cycle validation.
 
 Task decomposition guidelines:
 
 Natural seams that produce compilable+testable boundaries:
 
 1. Pure data structure.
-2. Core logic amd it's tests**.
+2. Core logic and its tests.
 3. Integration wiring.
 4. API surface/config.
-
-**5. Validate**
-
-1. plan.md ≤ 300 lines? Count them.
-2. plan.md has Architecture/Types section with type focus?
-3. plan.md has Tasks table at the end?
-4. Each task file follows the template? ≤ N lines (per project norms ~150)?
-5. Dependencies form a DAG? No cycles?
-6. First task has `dependencies: []`?
-7. Each task ends with something compilable and testable? (for this task's scope — compile, lint, test all pass)
-8. Task files in same dir as plan.md?
 
 **Post-flight**
 
 1. Update frontmatter `status` to `draft`.
 2. Present to user: "Plan written to `.specs/{feature}/plan.md` with X tasks. Review and approve to begin implementation."
+3. If user rejects the plan, revise based on feedback (max 2 revision rounds).
