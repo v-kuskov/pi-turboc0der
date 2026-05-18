@@ -1,6 +1,6 @@
 ---
 description: Creating and writing spec
-argument-hint: [feature description - what to build]
+argument-hint: "feature description - what to build"
 ---
 
 Interrogate user and write or update feature spec at path `.specs/{feature}/spec.md`. Spec must reflect

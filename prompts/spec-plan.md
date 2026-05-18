@@ -1,6 +1,6 @@
 ---
 description: Planning implementation for spec
-argument-hint: [feature slug - name from .specs/{slug}]
+argument-hint: "feature slug - name from .specs/{slug}"
 ---
 
 Write implementation plan for created and approved spec.  Take the spec files, validate and sharpen through grilling, deduce what you can from codebase/spec, ask user about the rest. Decompose into a high-level plan with compilable+testable task boundaries. Your only job is planning, do not write any code.

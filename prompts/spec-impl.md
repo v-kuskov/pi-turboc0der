@@ -1,6 +1,6 @@
 ---
 description: Implement planned spec
-argument-hint: [feature slug - name from .specs/{slug}]
+argument-hint: "feature slug - name from .specs/{slug}"
 ---
 
 Orchestrate implementation for given feature using TDD, subagents and self-verification cycle.
