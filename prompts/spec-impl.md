@@ -15,12 +15,11 @@ and test patterns relevant to the plan.
 <details>
 <summary><b>Rules</b></summary>
 
+- **DO NOT** edit code, **ALWAYS** delegate.
 - One task at a time.
 - Review-gate per task, do NOT proceed until current task passes review.
 - Commit per task, each verified + reviewed task gets one intermediate commit.
 - Full test suite at end, run it before merging.
-- Never change code, that's what subagents are for.
-- Verification means running the project's build + test commands (language-specific). Provided by project context.
 - Full Verification at the end means running the complete test suite (build + lint + all tests). Same commands as per-task verification, but run against the full codebase.
 
 </details>
@@ -43,7 +42,7 @@ Provide agent with:
 - All necessary context.
 - Build/test commands (from project context).
 
-Agent must implement exactly one task. Wait for agent to complete.
+Agent must implement exactly one task. Wait for agent to complete. Restart agent on errors.
 
 ## 3. Review
 
@@ -73,7 +72,7 @@ When build or test output contains blocking, critical, or major failures:
 4. No more than 3 fix iterations per task.
 5. If 3 iterations exhausted, mark task as `failed`, report in final output, and stop.
 
-#### Unrecoverable failure (build system broken, deps missing, infrastructure):
+#### Unrecoverable failure (build system broken, deps missing, infrastructure)
 
 - Reset last changes.
 - Leave already-implemented tasks intact.
